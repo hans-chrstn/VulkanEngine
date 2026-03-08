@@ -23,8 +23,6 @@ namespace Engine::Renderer {
         bool isDeviceSuitable(VkPhysicalDevice device,
                               VkSurfaceKHR surface) const;
         bool checkDeviceExtensionsSupport(VkPhysicalDevice device) const;
-        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
-                                             VkSurfaceKHR surface) const;
 
       public:
         VulkanPhysicalDevice(VkInstance instance, VkSurfaceKHR surface);
@@ -34,5 +32,7 @@ namespace Engine::Renderer {
         VkPhysicalDevice getPhysicalDevice() const {
             return _device;
         }
+        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
+                                             VkSurfaceKHR surface) const;
     };
 } // namespace Engine::Renderer
