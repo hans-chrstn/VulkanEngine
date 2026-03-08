@@ -19,13 +19,15 @@ namespace Engine::Renderer {
     class VulkanPhysicalDevice {
       private:
         VkPhysicalDevice _device = VK_NULL_HANDLE;
-        void pickPhysicalDevice(VkInstance instance);
-        bool isDeviceSuitable(VkPhysicalDevice device) const;
+        void pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface);
+        bool isDeviceSuitable(VkPhysicalDevice device,
+                              VkSurfaceKHR surface) const;
         bool checkDeviceExtensionsSupport(VkPhysicalDevice device) const;
-        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) const;
+        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
+                                             VkSurfaceKHR surface) const;
 
       public:
-        VulkanPhysicalDevice(VkInstance instance);
+        VulkanPhysicalDevice(VkInstance instance, VkSurfaceKHR surface);
         ~VulkanPhysicalDevice() = default;
         VulkanPhysicalDevice(const VulkanPhysicalDevice &) = delete;
         VulkanPhysicalDevice &operator=(const VulkanPhysicalDevice &) = delete;

@@ -1,5 +1,6 @@
 #include "physical_device.hpp"
 #include "core/logger.hpp"
+#include "utils/utils.hpp"
 #include <cstdint>
 #include <set>
 #include <string>
@@ -7,8 +8,14 @@
 #include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
+    VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance instance,
+                                               VkSurfaceKHR surface) {
+        pickPhysicalDevice(instance, surface);
+    }
+
     QueueFamilyIndices
-    VulkanPhysicalDevice::findQueueFamilies(VkPhysicalDevice device) const {
+    VulkanPhysicalDevice::findQueueFamilies(VkPhysicalDevice device,
+                                            VkSurfaceKHR surface) const {
         QueueFamilyIndices result;
         uint32_t count = 0;
 
@@ -24,7 +31,8 @@ namespace Engine::Renderer {
             }
 
             VkBool32 presentSupport = false;
-            // NOTE: add vkgetphysicaldevicesurfacesupportkhr later
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface,
+                                                 &presentSupport);
             if (presentSupport) {
                 result.presentFamily = i;
             }
@@ -40,11 +48,9 @@ namespace Engine::Renderer {
 
     bool VulkanPhysicalDevice::checkDeviceExtensionsSupport(
         VkPhysicalDevice device) const {
-        uint32_t count;
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
-        std::vector<VkExtensionProperties> availableExtensions(count);
-        vkEnumerateDeviceExtensionProperties(device, nullptr, &count,
-                                             availableExtensions.data());
+        std::vector<VkExtensionProperties> availableExtensions =
+            Utils::fetchVulkanResources<VkExtensionProperties>(
+                vkEnumerateDeviceExtensionProperties, device, nullptr);
 
         std::set<std::string> requiredExtensions(deviceExtensions.begin(),
                                                  deviceExtensions.end());
@@ -56,27 +62,32 @@ namespace Engine::Renderer {
         return requiredExtensions.empty();
     }
 
-    bool VulkanPhysicalDevice::isDeviceSuitable(VkPhysicalDevice device) const {
-        QueueFamilyIndices familyIndices = findQueueFamilies(device);
+    bool VulkanPhysicalDevice::isDeviceSuitable(VkPhysicalDevice device,
+                                                VkSurfaceKHR surface) const {
+        QueueFamilyIndices familyIndices = findQueueFamilies(device, surface);
         bool extensionsSupported = checkDeviceExtensionsSupport(device);
         // NOTE: add swapchain later
         return familyIndices.isComplete() && extensionsSupported;
     }
 
-    void VulkanPhysicalDevice::pickPhysicalDevice(VkInstance instance) {
+    void VulkanPhysicalDevice::pickPhysicalDevice(VkInstance instance,
+                                                  VkSurfaceKHR surface) {
         uint32_t count = 0;
-        vkEnumeratePhysicalDevices(instance, &count, nullptr);
+        std::vector<VkPhysicalDevice> devices =
+            Utils::fetchVulkanResources<VkPhysicalDevice>(
+                vkEnumeratePhysicalDevices, instance);
 
-        if (count == 0) {
+        if (devices.empty()) {
             ENGINE_FATAL("Failed to find GPUs with Vulkan support");
         }
 
-        std::vector<VkPhysicalDevice> devices(count);
-        vkEnumeratePhysicalDevices(instance, &count, devices.data());
-
         for (const auto &device : devices) {
-            if (isDeviceSuitable(device)) {
+            if (isDeviceSuitable(device, surface)) {
                 _device = device;
+                VkPhysicalDeviceProperties deviceProperties;
+                vkGetPhysicalDeviceProperties(device, &deviceProperties);
+                ENGINE_INFO("Using GPU: " +
+                            std::string(deviceProperties.deviceName));
                 break;
             }
         }

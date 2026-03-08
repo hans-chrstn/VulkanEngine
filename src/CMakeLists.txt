@@ -1,11 +1,14 @@
 set(ENGINE_SOURCES
   main.cpp
-  core/logger.cpp
   core/logger.hpp
   core/window.cpp
   core/window.hpp
   renderer/context.cpp
   renderer/context.hpp
+  renderer/physical_device.cpp
+  renderer/physical_device.hpp
+  renderer/surface.cpp
+  renderer/surface.hpp
   math/engine_math.cpp
   math/engine_math.hpp
 )
