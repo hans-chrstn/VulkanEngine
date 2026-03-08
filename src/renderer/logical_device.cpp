@@ -52,4 +52,4 @@ namespace Engine::Renderer {
     VulkanLogicalDevice::~VulkanLogicalDevice() {
         vkDestroyDevice(_device, nullptr);
     }
-}; // namespace Engine::Renderer
+} // namespace Engine::Renderer

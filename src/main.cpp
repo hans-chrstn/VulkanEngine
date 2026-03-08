@@ -8,7 +8,7 @@ int main() {
     ENGINE_INFO("Vulkan Engine is initializing.");
     try {
         Engine::Core::Window window(1280, 720, "My Vulkan Engine");
-        Engine::Renderer::VulkanContext context;
+        Engine::Renderer::VulkanContext context(window.getNativeWindow());
         while (!window.shouldClose()) {
             window.pollEvents();
             ENGINE_INFO("Vulkan Engine has started!");
