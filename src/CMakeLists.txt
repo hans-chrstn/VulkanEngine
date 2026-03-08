@@ -6,6 +6,7 @@ set(ENGINE_SOURCES
   renderer/logical_device.cpp
   renderer/physical_device.cpp
   renderer/surface.cpp
+  renderer/swapchain.cpp
   math/engine_math.cpp
 )
 

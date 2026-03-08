@@ -12,6 +12,8 @@ namespace Engine::Renderer {
                                                       _surface->getSurface());
         _device = std::make_unique<VulkanLogicalDevice>(*_gpu,
                                                         _surface->getSurface());
+        _swapChain = std::make_unique<VulkanSwapChain>(
+            *_gpu, *_device, _surface->getSurface(), window);
     }
     VulkanContext::~VulkanContext() {}
 } // namespace Engine::Renderer

@@ -1,3 +1,4 @@
+#pragma once
 #include "physical_device.hpp"
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>

@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 
 namespace Engine::Renderer {
     VulkanInstance::VulkanInstance() {

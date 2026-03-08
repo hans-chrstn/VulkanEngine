@@ -8,6 +8,12 @@ namespace Engine::Renderer {
     inline const std::vector<const char *> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
+    struct SwapChainSupportDetails {
+        VkSurfaceCapabilitiesKHR capabilities;
+        std::vector<VkSurfaceFormatKHR> formats;
+        std::vector<VkPresentModeKHR> presentModes;
+    };
+
     struct QueueFamilyIndices {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
@@ -19,6 +25,8 @@ namespace Engine::Renderer {
     class VulkanPhysicalDevice {
       private:
         VkPhysicalDevice _device = VK_NULL_HANDLE;
+        QueueFamilyIndices _indices;
+
         void pickPhysicalDevice(VkInstance instance, VkSurfaceKHR surface);
         bool isDeviceSuitable(VkPhysicalDevice device,
                               VkSurfaceKHR surface) const;
@@ -34,5 +42,12 @@ namespace Engine::Renderer {
         }
         QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
                                              VkSurfaceKHR surface) const;
+        SwapChainSupportDetails
+        querySwapChainSupport(VkPhysicalDevice device,
+                              VkSurfaceKHR surface) const;
+
+        QueueFamilyIndices getQueueFamilies() const {
+            return _indices;
+        };
     };
 } // namespace Engine::Renderer

@@ -1,5 +1,6 @@
 #include "physical_device.hpp"
 #include "core/logger.hpp"
+#include "swapchain.hpp"
 #include "utils/utils.hpp"
 #include <cstdint>
 #include <set>
@@ -62,17 +63,54 @@ namespace Engine::Renderer {
         return requiredExtensions.empty();
     }
 
+    SwapChainSupportDetails
+    VulkanPhysicalDevice::querySwapChainSupport(VkPhysicalDevice device,
+                                                VkSurfaceKHR surface) const {
+        SwapChainSupportDetails details;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
+                                                  &details.capabilities);
+
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount,
+                                             nullptr);
+
+        if (formatCount != 0) {
+            details.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount,
+                                                 details.formats.data());
+        }
+
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+                                                  &presentModeCount, nullptr);
+
+        if (presentModeCount != 0) {
+            details.presentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(
+                device, surface, &presentModeCount,
+                details.presentModes.data());
+        }
+
+        return details;
+    }
+
     bool VulkanPhysicalDevice::isDeviceSuitable(VkPhysicalDevice device,
                                                 VkSurfaceKHR surface) const {
         QueueFamilyIndices familyIndices = findQueueFamilies(device, surface);
         bool extensionsSupported = checkDeviceExtensionsSupport(device);
-        // NOTE: add swapchain later
-        return familyIndices.isComplete() && extensionsSupported;
+        bool swapChainAdequate = false;
+        if (extensionsSupported) {
+            SwapChainSupportDetails swapChainSupport =
+                querySwapChainSupport(device, surface);
+            swapChainAdequate = !swapChainSupport.formats.empty() &&
+                                !swapChainSupport.presentModes.empty();
+        }
+        return familyIndices.isComplete() && extensionsSupported &&
+               swapChainAdequate;
     }
 
     void VulkanPhysicalDevice::pickPhysicalDevice(VkInstance instance,
                                                   VkSurfaceKHR surface) {
-        uint32_t count = 0;
         std::vector<VkPhysicalDevice> devices =
             Utils::fetchVulkanResources<VkPhysicalDevice>(
                 vkEnumeratePhysicalDevices, instance);
@@ -84,6 +122,7 @@ namespace Engine::Renderer {
         for (const auto &device : devices) {
             if (isDeviceSuitable(device, surface)) {
                 _device = device;
+                _indices = findQueueFamilies(device, surface);
                 VkPhysicalDeviceProperties deviceProperties;
                 vkGetPhysicalDeviceProperties(device, &deviceProperties);
                 ENGINE_INFO("Using GPU: " +
