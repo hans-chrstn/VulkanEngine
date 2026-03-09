@@ -12,6 +12,7 @@ set(ENGINE_SOURCES
   renderer/command_pool.cpp
   renderer/command_buffers.cpp
   renderer/sync_objects.cpp
+  renderer/buffer.cpp
   math/engine_math.cpp
 )
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "buffer.hpp"
 #include "command_buffers.hpp"
 #include "command_pool.hpp"
 #include "image_views.hpp"
@@ -19,6 +20,7 @@ namespace Engine::Renderer {
       private:
         static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
         uint32_t _currentFrame = 0;
+        uint32_t _vertexCount = 0;
 
         std::unique_ptr<VulkanInstance> _instance;
         std::unique_ptr<VulkanSurface> _surface;
@@ -30,6 +32,7 @@ namespace Engine::Renderer {
         std::unique_ptr<VulkanCommandPool> _commandPool;
         std::unique_ptr<VulkanCommandBuffers> _commandBuffers;
         std::unique_ptr<VulkanSyncObjects> _syncObjects;
+        std::unique_ptr<VulkanBuffer> _vertexBuffer;
 
         void recordCommandBuffer(VkCommandBuffer commandBuffer,
                                  uint32_t imageIndex);

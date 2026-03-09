@@ -1,5 +1,6 @@
 #include "context.hpp"
 #include "core/logger.hpp"
+#include "vertex.hpp"
 #include <GLFW/glfw3.h>
 #include <cstdint>
 #include <memory>
@@ -30,6 +31,20 @@ namespace Engine::Renderer {
             static_cast<uint32_t>(_swapChain->getImages().size()));
         _syncObjects = std::make_unique<VulkanSyncObjects>(
             _device->getDevice(), MAX_FRAMES_IN_FLIGHT);
+
+        const std::vector<Vertex> vertices = {
+            {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+
+        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+        _vertexBuffer = std::make_unique<VulkanBuffer>(
+            _device->getDevice(), _gpu->getPhysicalDevice(), bufferSize,
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        _vertexBuffer->copyTo((void *)vertices.data(), bufferSize);
+        _vertexCount = static_cast<uint32_t>(vertices.size());
     }
     VulkanContext::~VulkanContext() {
         vkDeviceWaitIdle(_device->getDevice());
@@ -169,7 +184,11 @@ namespace Engine::Renderer {
         scissor.extent = _swapChain->getExtent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        VkBuffer vertexBuffers[] = {_vertexBuffer->getBuffer()};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+        vkCmdDraw(commandBuffer, _vertexCount, 1, 0, 0);
 
         vkCmdEndRendering(commandBuffer);
 
