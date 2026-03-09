@@ -12,7 +12,6 @@ int main() {
         while (!window.shouldClose()) {
             window.pollEvents();
             context.drawFrame();
-            ENGINE_INFO("Vulkan Engine has started!");
         }
     } catch (const std::exception &e) {
         ENGINE_FATAL(e.what());

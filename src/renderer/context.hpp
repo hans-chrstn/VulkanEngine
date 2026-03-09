@@ -14,13 +14,17 @@
 #include <cstdint>
 #include <memory>
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     class VulkanContext {
       private:
-        static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+        static constexpr int MAX_FRAMES_IN_FLIGHT = 3;
         uint32_t _currentFrame = 0;
         uint32_t _vertexCount = 0;
+        uint32_t _indexCount = 0;
+
+        VkDescriptorPool _descriptorPool = VK_NULL_HANDLE;
 
         std::unique_ptr<VulkanInstance> _instance;
         std::unique_ptr<VulkanSurface> _surface;
@@ -33,9 +37,16 @@ namespace Engine::Renderer {
         std::unique_ptr<VulkanCommandBuffers> _commandBuffers;
         std::unique_ptr<VulkanSyncObjects> _syncObjects;
         std::unique_ptr<VulkanBuffer> _vertexBuffer;
+        std::unique_ptr<VulkanBuffer> _indexBuffer;
+
+        std::vector<std::unique_ptr<VulkanBuffer>> _uniformBuffers;
+        std::vector<VkDescriptorSet> _descriptorSets;
+        std::vector<VkFence> _imagesInFlight;
 
         void recordCommandBuffer(VkCommandBuffer commandBuffer,
                                  uint32_t imageIndex);
+
+        void updateUniformBuffer(uint32_t currentImage);
 
       public:
         VulkanContext(GLFWwindow *window);

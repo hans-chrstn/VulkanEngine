@@ -13,6 +13,7 @@ set(ENGINE_SOURCES
   renderer/command_buffers.cpp
   renderer/sync_objects.cpp
   renderer/buffer.cpp
+  renderer/stb_image_impl.cpp
   math/engine_math.cpp
 )
 

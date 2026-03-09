@@ -1,9 +1,17 @@
 #include "context.hpp"
 #include "core/logger.hpp"
+#include "ubo.hpp"
 #include "vertex.hpp"
 #include <GLFW/glfw3.h>
+#include <chrono>
 #include <cstdint>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/fwd.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/trigonometric.hpp>
 #include <memory>
+#include <vector>
 #include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
@@ -30,24 +38,118 @@ namespace Engine::Renderer {
             _device->getDevice(), _commandPool->getPool(),
             static_cast<uint32_t>(_swapChain->getImages().size()));
         _syncObjects = std::make_unique<VulkanSyncObjects>(
-            _device->getDevice(), MAX_FRAMES_IN_FLIGHT);
+            _device->getDevice(),
+            static_cast<uint32_t>(_swapChain->getImages().size()));
+
+        _imagesInFlight.resize(_swapChain->getImages().size(), VK_NULL_HANDLE);
 
         const std::vector<Vertex> vertices = {
-            {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-            {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+            {{-0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+            {{0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+            {{0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}},
+            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
 
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+        const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+
+        VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
         _vertexBuffer = std::make_unique<VulkanBuffer>(
-            _device->getDevice(), _gpu->getPhysicalDevice(), bufferSize,
+            _device->getDevice(), _gpu->getPhysicalDevice(), vertexBufferSize,
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        _vertexBuffer->copyTo((void *)vertices.data(), bufferSize);
-        _vertexCount = static_cast<uint32_t>(vertices.size());
+        _vertexBuffer->copyTo((void *)vertices.data(), vertexBufferSize);
+
+        _uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            _uniformBuffers[i] = std::make_unique<VulkanBuffer>(
+                _device->getDevice(), _gpu->getPhysicalDevice(),
+                sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        }
+
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+        if (vkCreateDescriptorPool(_device->getDevice(), &poolInfo, nullptr,
+                                   &_descriptorPool) != VK_SUCCESS) {
+            ENGINE_FATAL("Failed to create descriptor pool");
+        }
+
+        std::vector<VkDescriptorSetLayout> layouts(
+            MAX_FRAMES_IN_FLIGHT, _pipeline->getDescriptorSetLayout());
+        VkDescriptorSetAllocateInfo descriptorAllocInfo{};
+        descriptorAllocInfo.sType =
+            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        descriptorAllocInfo.descriptorPool = _descriptorPool;
+        descriptorAllocInfo.descriptorSetCount =
+            static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        descriptorAllocInfo.pSetLayouts = layouts.data();
+
+        _descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+        if (vkAllocateDescriptorSets(_device->getDevice(), &descriptorAllocInfo,
+                                     _descriptorSets.data()) != VK_SUCCESS) {
+            ENGINE_FATAL("Failed to allocate descriptor sets");
+        }
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = _uniformBuffers[i]->getBuffer();
+            bufferInfo.offset = 0;
+            bufferInfo.range = sizeof(UniformBufferObject);
+
+            VkWriteDescriptorSet descriptorWrite{};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = _descriptorSets[i];
+            descriptorWrite.dstBinding = 0;
+            descriptorWrite.dstArrayElement = 0;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrite.pBufferInfo = &bufferInfo;
+
+            vkUpdateDescriptorSets(_device->getDevice(), 1, &descriptorWrite, 0,
+                                   nullptr);
+        }
+
+        VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+        _indexBuffer = std::make_unique<VulkanBuffer>(
+            _device->getDevice(), _gpu->getPhysicalDevice(), indexBufferSize,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        _indexBuffer->copyTo((void *)indices.data(), indexBufferSize);
+        _indexCount = static_cast<uint32_t>(indices.size());
     }
     VulkanContext::~VulkanContext() {
         vkDeviceWaitIdle(_device->getDevice());
+    }
+
+    void VulkanContext::updateUniformBuffer(uint32_t currentImage) {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float time = std::chrono::duration<float, std::chrono::seconds::period>(
+                         currentTime - startTime)
+                         .count();
+
+        UniformBufferObject ubo{};
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+                                glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f),
+                               glm::vec3(0.0f, 0.0f, 0.0f),
+                               glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.proj = glm::perspective(glm::radians(45.0f),
+                                    _swapChain->getExtent().width /
+                                        (float)_swapChain->getExtent().height,
+                                    0.1f, 10.0f);
+        ubo.proj[1][1] *= -1;
+        _uniformBuffers[currentImage]->copyTo(&ubo, sizeof(ubo));
     }
 
     void VulkanContext::drawFrame() {
@@ -69,12 +171,21 @@ namespace Engine::Renderer {
             ENGINE_FATAL("Failed to acquire swap chain image!");
         }
 
+        if (_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+            vkWaitForFences(device, 1, &_imagesInFlight[imageIndex], VK_TRUE,
+                            UINT64_MAX);
+        }
+
+        _imagesInFlight[imageIndex] =
+            _syncObjects->getInFlightFence()[_currentFrame];
+
         vkResetFences(device, 1,
                       &_syncObjects->getInFlightFence()[_currentFrame]);
 
         VkCommandBuffer commandBuffer =
             _commandBuffers->getCommandBuffers()[_currentFrame];
         vkResetCommandBuffer(commandBuffer, 0);
+        updateUniformBuffer(_currentFrame);
         recordCommandBuffer(commandBuffer, imageIndex);
 
         VkSubmitInfo submitInfo{};
@@ -84,14 +195,15 @@ namespace Engine::Renderer {
             _syncObjects->getImageAvailableSemaphores()[_currentFrame]};
         VkPipelineStageFlags waitStages[] = {
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+        VkSemaphore signalSemaphores[] = {
+            _syncObjects->getRenderFinishedSemaphores()[imageIndex]};
+
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
-
-        VkSemaphore signalSemaphores[] = {
-            _syncObjects->getRenderFinishedSemaphores()[_currentFrame]};
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -186,9 +298,16 @@ namespace Engine::Renderer {
 
         VkBuffer vertexBuffers[] = {_vertexBuffer->getBuffer()};
         VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdDraw(commandBuffer, _vertexCount, 1, 0, 0);
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getBuffer(), 0,
+                             VK_INDEX_TYPE_UINT16);
+
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                _pipeline->getPipelineLayout(), 0, 1,
+                                &_descriptorSets[_currentFrame], 0, nullptr);
+
+        vkCmdDrawIndexed(commandBuffer, _indexCount, 1, 0, 0, 0);
 
         vkCmdEndRendering(commandBuffer);
 

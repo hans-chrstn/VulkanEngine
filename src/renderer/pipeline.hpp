@@ -9,6 +9,7 @@ namespace Engine::Renderer {
         VkDevice _device;
         VkPipelineLayout _pipelineLayout;
         VkPipeline _graphicsPipeline;
+        VkDescriptorSetLayout _descriptorSetLayout;
         VkShaderModule createShaderModule(const std::vector<char> &code);
 
       public:
@@ -20,6 +21,12 @@ namespace Engine::Renderer {
         ~VulkanGraphicsPipeline();
         VkPipeline getPipeline() const {
             return _graphicsPipeline;
+        }
+        VkDescriptorSetLayout getDescriptorSetLayout() const {
+            return _descriptorSetLayout;
+        }
+        VkPipelineLayout getPipelineLayout() const {
+            return _pipelineLayout;
         }
     };
 } // namespace Engine::Renderer

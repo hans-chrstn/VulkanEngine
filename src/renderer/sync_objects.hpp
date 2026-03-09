@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -14,13 +15,13 @@ namespace Engine::Renderer {
         VulkanSyncObjects(const VulkanSyncObjects &) = delete;
         VulkanSyncObjects &operator=(const VulkanSyncObjects &) = delete;
         ~VulkanSyncObjects();
-        std::vector<VkSemaphore> getImageAvailableSemaphores() const {
+        const std::vector<VkSemaphore>& getImageAvailableSemaphores() const {
             return _imageAvailableSemaphores;
         }
-        std::vector<VkSemaphore> getRenderFinishedSemaphores() const {
+        const std::vector<VkSemaphore>& getRenderFinishedSemaphores() const {
             return _renderFinishedSemaphores;
         }
-        std::vector<VkFence> getInFlightFence() const {
+        const std::vector<VkFence>& getInFlightFence() const {
             return _inFlightFences;
         }
     };
