@@ -3,6 +3,7 @@
 #include "ubo.hpp"
 #include "vertex.hpp"
 #include <GLFW/glfw3.h>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <glm/ext/matrix_clip_space.hpp>
@@ -40,14 +41,18 @@ namespace Engine::Renderer {
         _syncObjects = std::make_unique<VulkanSyncObjects>(
             _device->getDevice(),
             static_cast<uint32_t>(_swapChain->getImages().size()));
+        _texture = std::make_unique<VulkanTexture>(
+            _device->getDevice(), _gpu->getPhysicalDevice(),
+            _commandPool->getPool(), _device->getGraphicsQueue(),
+            "textures/texture.png");
 
         _imagesInFlight.resize(_swapChain->getImages().size(), VK_NULL_HANDLE);
 
         const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-            {{0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-            {{0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}},
-            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+            {{-0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+            {{0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+            {{0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
 
         const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
@@ -68,14 +73,18 @@ namespace Engine::Renderer {
                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         }
 
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        std::array<VkDescriptorPoolSize, 2> poolSizes{};
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[0].descriptorCount =
+            static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[1].descriptorCount =
+            static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 1;
-        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.poolSizeCount = 2;
+        poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
         if (vkCreateDescriptorPool(_device->getDevice(), &poolInfo, nullptr,
@@ -105,17 +114,37 @@ namespace Engine::Renderer {
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
 
-            VkWriteDescriptorSet descriptorWrite{};
-            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite.dstSet = _descriptorSets[i];
-            descriptorWrite.dstBinding = 0;
-            descriptorWrite.dstArrayElement = 0;
-            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrite.descriptorCount = 1;
-            descriptorWrite.pBufferInfo = &bufferInfo;
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfo.imageView = _texture->getView();
+            imageInfo.sampler = _texture->getSampler();
 
-            vkUpdateDescriptorSets(_device->getDevice(), 1, &descriptorWrite, 0,
-                                   nullptr);
+            VkWriteDescriptorSet uboDescriptorWrite{};
+            uboDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            uboDescriptorWrite.dstSet = _descriptorSets[i];
+            uboDescriptorWrite.dstBinding = 0;
+            uboDescriptorWrite.descriptorType =
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            uboDescriptorWrite.descriptorCount = 1;
+            uboDescriptorWrite.pBufferInfo = &bufferInfo;
+
+            VkWriteDescriptorSet samplerDescriptorWrite{};
+            samplerDescriptorWrite.sType =
+                VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            samplerDescriptorWrite.dstSet = _descriptorSets[i];
+            samplerDescriptorWrite.dstBinding = 1;
+            samplerDescriptorWrite.descriptorType =
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            samplerDescriptorWrite.descriptorCount = 1;
+            samplerDescriptorWrite.pImageInfo = &imageInfo;
+
+            std::array<VkWriteDescriptorSet, 2> descriptorWrites = {
+                uboDescriptorWrite, samplerDescriptorWrite};
+
+            vkUpdateDescriptorSets(
+                _device->getDevice(),
+                static_cast<uint32_t>(descriptorWrites.size()),
+                descriptorWrites.data(), 0, nullptr);
         }
 
         VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();

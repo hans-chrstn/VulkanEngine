@@ -20,9 +20,9 @@ namespace Engine::Renderer {
             return bindingDescription;
         }
 
-        static std::array<VkVertexInputAttributeDescription, 2>
+        static std::array<VkVertexInputAttributeDescription, 3>
         getAttributeDescriptions() {
-            std::array<VkVertexInputAttributeDescription, 2>
+            std::array<VkVertexInputAttributeDescription, 3>
                 attributeDescriptions{};
 
             attributeDescriptions[0].binding = 0;
@@ -34,6 +34,11 @@ namespace Engine::Renderer {
             attributeDescriptions[1].location = 1;
             attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+            attributeDescriptions[2].binding = 0;
+            attributeDescriptions[2].location = 2;
+            attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
             return attributeDescriptions;
         }

@@ -14,6 +14,7 @@ set(ENGINE_SOURCES
   renderer/sync_objects.cpp
   renderer/buffer.cpp
   renderer/stb_image_impl.cpp
+  renderer/texture.cpp
   math/engine_math.cpp
 )
 

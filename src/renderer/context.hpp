@@ -10,6 +10,7 @@
 #include "surface.hpp"
 #include "swapchain.hpp"
 #include "sync_objects.hpp"
+#include "texture.hpp"
 #include <GLFW/glfw3.h>
 #include <cstdint>
 #include <memory>
@@ -38,8 +39,10 @@ namespace Engine::Renderer {
         std::unique_ptr<VulkanSyncObjects> _syncObjects;
         std::unique_ptr<VulkanBuffer> _vertexBuffer;
         std::unique_ptr<VulkanBuffer> _indexBuffer;
+        std::unique_ptr<VulkanTexture> _texture;
 
         std::vector<std::unique_ptr<VulkanBuffer>> _uniformBuffers;
+
         std::vector<VkDescriptorSet> _descriptorSets;
         std::vector<VkFence> _imagesInFlight;
 

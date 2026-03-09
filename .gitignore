@@ -4,7 +4,11 @@ bin/
 obj/
 
 # Compiled Shaders
-*.spv
+/shaders/*.spv
+
+# Textures
+/textures/*
+
 
 # IDE / Editor files
 .vscode/
