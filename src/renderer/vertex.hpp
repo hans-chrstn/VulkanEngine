@@ -5,12 +5,19 @@
 #include <glm/ext/vector_float3.hpp>
 #include <glm/glm.hpp>
 #include <vulkan/vulkan_core.h>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 namespace Engine::Renderer {
     struct Vertex {
-        glm::vec2 pos;
+        glm::vec3 pos;
         glm::vec3 color;
         glm::vec2 texCoord;
+
+        bool operator==(const Vertex &other) const {
+            return pos == other.pos && color == other.color &&
+                   texCoord == other.texCoord;
+        }
 
         static VkVertexInputBindingDescription getBindingDescription() {
             VkVertexInputBindingDescription bindingDescription{};
@@ -27,7 +34,7 @@ namespace Engine::Renderer {
 
             attributeDescriptions[0].binding = 0;
             attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
             attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
             attributeDescriptions[1].binding = 0;
@@ -44,3 +51,14 @@ namespace Engine::Renderer {
         }
     };
 } // namespace Engine::Renderer
+
+namespace std {
+    template <> struct hash<Engine::Renderer::Vertex> {
+        size_t operator()(Engine::Renderer::Vertex const &vertex) const {
+            return ((hash<glm::vec3>()(vertex.pos) ^
+                     (hash<glm::vec3>()(vertex.color) << 1)) >>
+                    1) ^
+                   (hash<glm::vec2>()(vertex.texCoord) << 1);
+        }
+    };
+} // namespace std

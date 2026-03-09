@@ -1,5 +1,6 @@
 #include "context.hpp"
 #include "core/logger.hpp"
+#include "model_loader.hpp"
 #include "ubo.hpp"
 #include "vertex.hpp"
 #include <GLFW/glfw3.h>
@@ -48,13 +49,9 @@ namespace Engine::Renderer {
 
         _imagesInFlight.resize(_swapChain->getImages().size(), VK_NULL_HANDLE);
 
-        const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-            {{0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-            {{0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
-
-        const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+        loadModel("models/model.obj", vertices, indices);
 
         VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
         _vertexBuffer = std::make_unique<VulkanBuffer>(
@@ -73,17 +70,21 @@ namespace Engine::Renderer {
                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         }
 
-        std::array<VkDescriptorPoolSize, 2> poolSizes{};
-        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSizes[0].descriptorCount =
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+        VkDescriptorPoolSize samplerPoolSize{};
+        samplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerPoolSize.descriptorCount =
             static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[1].descriptorCount =
-            static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+        std::array<VkDescriptorPoolSize, 2> poolSizes = {poolSize,
+                                                         samplerPoolSize};
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = 2;
+        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
         poolInfo.pPoolSizes = poolSizes.data();
         poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
@@ -123,6 +124,7 @@ namespace Engine::Renderer {
             uboDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             uboDescriptorWrite.dstSet = _descriptorSets[i];
             uboDescriptorWrite.dstBinding = 0;
+            uboDescriptorWrite.dstArrayElement = 0;
             uboDescriptorWrite.descriptorType =
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             uboDescriptorWrite.descriptorCount = 1;
@@ -133,6 +135,7 @@ namespace Engine::Renderer {
                 VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             samplerDescriptorWrite.dstSet = _descriptorSets[i];
             samplerDescriptorWrite.dstBinding = 1;
+            samplerDescriptorWrite.dstArrayElement = 0;
             samplerDescriptorWrite.descriptorType =
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             samplerDescriptorWrite.descriptorCount = 1;
@@ -158,6 +161,7 @@ namespace Engine::Renderer {
     }
     VulkanContext::~VulkanContext() {
         vkDeviceWaitIdle(_device->getDevice());
+        vkDestroyDescriptorPool(_device->getDevice(), _descriptorPool, nullptr);
     }
 
     void VulkanContext::updateUniformBuffer(uint32_t currentImage) {
@@ -168,20 +172,15 @@ namespace Engine::Renderer {
                          .count();
 
         UniformBufferObject ubo{};
-
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                                 glm::vec3(0.0f, 0.0f, 1.0f));
-
-        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f),
+        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 70.0f),
                                glm::vec3(0.0f, 0.0f, 0.0f),
                                glm::vec3(0.0f, 1.0f, 0.0f));
-
         float aspect = _swapChain->getExtent().width /
                        (float)_swapChain->getExtent().height;
-        ubo.proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 10.0f);
-
+        ubo.proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 1000.0f);
         ubo.proj[1][1] *= -1;
-
         _uniformBuffers[currentImage]->copyTo(&ubo, sizeof(ubo));
     }
 
@@ -209,11 +208,11 @@ namespace Engine::Renderer {
                             UINT64_MAX);
         }
 
-        _imagesInFlight[imageIndex] =
-            _syncObjects->getInFlightFence()[_currentFrame];
-
         vkResetFences(device, 1,
                       &_syncObjects->getInFlightFence()[_currentFrame]);
+
+        _imagesInFlight[imageIndex] =
+            _syncObjects->getInFlightFence()[_currentFrame];
 
         VkCommandBuffer commandBuffer =
             _commandBuffers->getCommandBuffers()[_currentFrame];
@@ -334,7 +333,7 @@ namespace Engine::Renderer {
 
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getBuffer(), 0,
-                             VK_INDEX_TYPE_UINT16);
+                             VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 _pipeline->getPipelineLayout(), 0, 1,

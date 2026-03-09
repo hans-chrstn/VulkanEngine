@@ -9,6 +9,8 @@ obj/
 # Textures
 /textures/*
 
+# Models
+/models/*
 
 # IDE / Editor files
 .vscode/
