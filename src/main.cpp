@@ -11,6 +11,7 @@ int main() {
         Engine::Renderer::VulkanContext context(window.getNativeWindow());
         while (!window.shouldClose()) {
             window.pollEvents();
+            context.drawFrame();
             ENGINE_INFO("Vulkan Engine has started!");
         }
     } catch (const std::exception &e) {

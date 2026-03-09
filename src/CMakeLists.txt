@@ -11,6 +11,7 @@ set(ENGINE_SOURCES
   renderer/pipeline.cpp
   renderer/command_pool.cpp
   renderer/command_buffers.cpp
+  renderer/sync_objects.cpp
   math/engine_math.cpp
 )
 
