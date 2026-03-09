@@ -1,4 +1,6 @@
 #pragma once
+#include "command_buffers.hpp"
+#include "command_pool.hpp"
 #include "image_views.hpp"
 #include "instance.hpp"
 #include "logical_device.hpp"
@@ -20,6 +22,8 @@ namespace Engine::Renderer {
         std::unique_ptr<VulkanSwapChain> _swapChain;
         std::unique_ptr<VulkanImageViews> _swapChainImageViews;
         std::unique_ptr<VulkanGraphicsPipeline> _pipeline;
+        std::unique_ptr<VulkanCommandPool> _commandPool;
+        std::unique_ptr<VulkanCommandBuffers> _commandBuffers;
 
       public:
         VulkanContext(GLFWwindow *window);

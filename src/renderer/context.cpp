@@ -20,6 +20,12 @@ namespace Engine::Renderer {
         _pipeline = std::make_unique<VulkanGraphicsPipeline>(
             _device->getDevice(), _swapChain->getExtent(),
             _swapChain->getFormat());
+        _commandPool = std::make_unique<VulkanCommandPool>(
+            _device->getDevice(),
+            _gpu->getQueueFamilies().graphicsFamily.value());
+        _commandBuffers = std::make_unique<VulkanCommandBuffers>(
+            _device->getDevice(), _commandPool->getPool(),
+            static_cast<uint32_t>(_swapChain->getImages().size()));
     }
     VulkanContext::~VulkanContext() {}
 } // namespace Engine::Renderer

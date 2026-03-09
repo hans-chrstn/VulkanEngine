@@ -8,6 +8,9 @@ set(ENGINE_SOURCES
   renderer/surface.cpp
   renderer/swapchain.cpp
   renderer/image_views.cpp
+  renderer/pipeline.cpp
+  renderer/command_pool.cpp
+  renderer/command_buffers.cpp
   math/engine_math.cpp
 )
 
