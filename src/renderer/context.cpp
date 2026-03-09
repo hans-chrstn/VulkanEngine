@@ -14,6 +14,12 @@ namespace Engine::Renderer {
                                                         _surface->getSurface());
         _swapChain = std::make_unique<VulkanSwapChain>(
             *_gpu, *_device, _surface->getSurface(), window);
+        _swapChainImageViews = std::make_unique<VulkanImageViews>(
+            _device->getDevice(), _swapChain->getImages(),
+            _swapChain->getFormat());
+        _pipeline = std::make_unique<VulkanGraphicsPipeline>(
+            _device->getDevice(), _swapChain->getExtent(),
+            _swapChain->getFormat());
     }
     VulkanContext::~VulkanContext() {}
 } // namespace Engine::Renderer

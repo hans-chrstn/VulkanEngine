@@ -1,7 +1,9 @@
 #pragma once
+#include "image_views.hpp"
 #include "instance.hpp"
 #include "logical_device.hpp"
 #include "physical_device.hpp"
+#include "pipeline.hpp"
 #include "surface.hpp"
 #include "swapchain.hpp"
 #include <GLFW/glfw3.h>
@@ -16,6 +18,8 @@ namespace Engine::Renderer {
         std::unique_ptr<VulkanPhysicalDevice> _gpu;
         std::unique_ptr<VulkanLogicalDevice> _device;
         std::unique_ptr<VulkanSwapChain> _swapChain;
+        std::unique_ptr<VulkanImageViews> _swapChainImageViews;
+        std::unique_ptr<VulkanGraphicsPipeline> _pipeline;
 
       public:
         VulkanContext(GLFWwindow *window);

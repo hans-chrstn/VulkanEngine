@@ -25,10 +25,16 @@ namespace Engine::Renderer {
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
+        VkPhysicalDeviceVulkan13Features vulkanFeatures{};
+        vulkanFeatures.sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        vulkanFeatures.dynamicRendering = VK_TRUE;
+
         VkPhysicalDeviceFeatures deviceFeatures{};
 
         VkDeviceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        createInfo.pNext = &vulkanFeatures;
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.queueCreateInfoCount =
             static_cast<uint32_t>(queueCreateInfos.size());

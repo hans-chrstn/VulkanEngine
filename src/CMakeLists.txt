@@ -7,6 +7,7 @@ set(ENGINE_SOURCES
   renderer/physical_device.cpp
   renderer/surface.cpp
   renderer/swapchain.cpp
+  renderer/image_views.cpp
   math/engine_math.cpp
 )
 
