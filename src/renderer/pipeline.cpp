@@ -1,18 +1,24 @@
 #include "pipeline.hpp"
 #include "core/logger.hpp"
 #include "utils/utils.hpp"
-#include "vertex.hpp"
 #include <array>
 #include <cstdint>
+#include <string>
+#include <vector>
 #include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
-    VulkanGraphicsPipeline::VulkanGraphicsPipeline(VkDevice device,
-                                                   VkExtent2D extent,
-                                                   VkFormat swapChainFormat)
+    VulkanGraphicsPipeline::VulkanGraphicsPipeline(
+        VkDevice device, VkExtent2D extent, VkFormat swapChainFormat,
+        const std::string &vertPath, const std::string &fragPath,
+        VkVertexInputBindingDescription bindingDescription,
+        const std::vector<VkVertexInputAttributeDescription>
+            &attributeDescriptions,
+        VkPushConstantRange *pushConstantRange, VkCullModeFlags cullMode,
+        VkFrontFace frontFace)
         : _device(device) {
-        auto vertShaderCode = Utils::readFile("shaders/vert.spv");
-        auto fragShaderCode = Utils::readFile("shaders/frag.spv");
+        auto vertShaderCode = Utils::readFile(vertPath);
+        auto fragShaderCode = Utils::readFile(fragPath);
 
         VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
         VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -33,9 +39,6 @@ namespace Engine::Renderer {
 
         VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
                                                           fragShaderStageInfo};
-
-        auto bindingDescription = Vertex::getBindingDescription();
-        auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType =
@@ -80,8 +83,8 @@ namespace Engine::Renderer {
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.cullMode = cullMode;
+        rasterizer.frontFace = frontFace;
         rasterizer.depthBiasEnable = VK_FALSE;
 
         VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -136,6 +139,12 @@ namespace Engine::Renderer {
             VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
         pipelineLayoutInfo.pSetLayouts = &_descriptorSetLayout;
+
+        if (pushConstantRange != nullptr) {
+            pipelineLayoutInfo.pushConstantRangeCount = 1;
+            pipelineLayoutInfo.pPushConstantRanges = pushConstantRange;
+        }
+
         if (vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
                                    &_pipelineLayout) != VK_SUCCESS) {
             ENGINE_FATAL("Failed to create pipeline layout");

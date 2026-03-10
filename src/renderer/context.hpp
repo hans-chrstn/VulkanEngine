@@ -1,5 +1,6 @@
 #pragma once
 #include "buffer.hpp"
+#include "camera.hpp"
 #include "command_buffers.hpp"
 #include "command_pool.hpp"
 #include "image_views.hpp"
@@ -11,6 +12,7 @@
 #include "swapchain.hpp"
 #include "sync_objects.hpp"
 #include "texture.hpp"
+#include "ui/context.hpp"
 #include <GLFW/glfw3.h>
 #include <cstdint>
 #include <memory>
@@ -24,6 +26,10 @@ namespace Engine::Renderer {
         uint32_t _currentFrame = 0;
         uint32_t _vertexCount = 0;
         uint32_t _indexCount = 0;
+        float _lastFrameTime = 0.0f;
+        float _lastMouseX = 0.0;
+        float _lastMouseY = 0.0;
+        bool _firstMouse = true;
 
         VkDescriptorPool _descriptorPool = VK_NULL_HANDLE;
 
@@ -40,6 +46,8 @@ namespace Engine::Renderer {
         std::unique_ptr<VulkanBuffer> _vertexBuffer;
         std::unique_ptr<VulkanBuffer> _indexBuffer;
         std::unique_ptr<VulkanTexture> _texture;
+        std::unique_ptr<UI::UIContext> _uiContext;
+        std::unique_ptr<Camera> _camera;
 
         std::vector<std::unique_ptr<VulkanBuffer>> _uniformBuffers;
 
@@ -56,6 +64,6 @@ namespace Engine::Renderer {
         ~VulkanContext();
         VulkanContext(const VulkanContext &) = delete;
         VulkanContext &operator=(const VulkanContext &) = delete;
-        void drawFrame();
+        void drawFrame(GLFWwindow *window);
     };
 } // namespace Engine::Renderer

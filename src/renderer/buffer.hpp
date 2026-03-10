@@ -23,5 +23,8 @@ namespace Engine::Renderer {
             return _buffer;
         }
         void copyTo(void *data, VkDeviceSize size);
+        VkDeviceSize getSize() const {
+            return _size;
+        }
     };
 } // namespace Engine::Renderer

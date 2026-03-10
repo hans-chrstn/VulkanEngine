@@ -1,7 +1,11 @@
 #include "context.hpp"
+#include "core/input.hpp"
 #include "core/logger.hpp"
 #include "model_loader.hpp"
 #include "ubo.hpp"
+#include "ui/context.hpp"
+#include "ui/layout_manager.hpp"
+#include "ui/panel.hpp"
 #include "vertex.hpp"
 #include <GLFW/glfw3.h>
 #include <array>
@@ -30,9 +34,18 @@ namespace Engine::Renderer {
         _swapChainImageViews = std::make_unique<VulkanImageViews>(
             _device->getDevice(), _swapChain->getImages(),
             _swapChain->getFormat());
+
+        _camera = std::make_unique<Camera>();
+
+        auto attr = Vertex::getAttributeDescriptions();
+        std::vector<VkVertexInputAttributeDescription> attributeVector(
+            attr.begin(), attr.end());
         _pipeline = std::make_unique<VulkanGraphicsPipeline>(
             _device->getDevice(), _swapChain->getExtent(),
-            _swapChain->getFormat());
+            _swapChain->getFormat(), "shaders/vert.spv", "shaders/frag.spv",
+            Vertex::getBindingDescription(), attributeVector, nullptr,
+            VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+
         _commandPool = std::make_unique<VulkanCommandPool>(
             _device->getDevice(),
             _gpu->getQueueFamilies().graphicsFamily.value());
@@ -52,6 +65,7 @@ namespace Engine::Renderer {
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
         loadModel("models/model.obj", vertices, indices);
+        _indexCount = static_cast<uint32_t>(indices.size());
 
         VkDeviceSize vertexBufferSize = sizeof(vertices[0]) * vertices.size();
         _vertexBuffer = std::make_unique<VulkanBuffer>(
@@ -60,6 +74,14 @@ namespace Engine::Renderer {
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         _vertexBuffer->copyTo((void *)vertices.data(), vertexBufferSize);
+
+        VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
+        _indexBuffer = std::make_unique<VulkanBuffer>(
+            _device->getDevice(), _gpu->getPhysicalDevice(), indexBufferSize,
+            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        _indexBuffer->copyTo((void *)indices.data(), indexBufferSize);
 
         _uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -70,17 +92,13 @@ namespace Engine::Renderer {
                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         }
 
-        VkDescriptorPoolSize poolSize{};
-        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-        VkDescriptorPoolSize samplerPoolSize{};
-        samplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerPoolSize.descriptorCount =
+        std::array<VkDescriptorPoolSize, 2> poolSizes{};
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[0].descriptorCount =
             static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-        std::array<VkDescriptorPoolSize, 2> poolSizes = {poolSize,
-                                                         samplerPoolSize};
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[1].descriptorCount =
+            static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -143,22 +161,33 @@ namespace Engine::Renderer {
 
             std::array<VkWriteDescriptorSet, 2> descriptorWrites = {
                 uboDescriptorWrite, samplerDescriptorWrite};
-
             vkUpdateDescriptorSets(
                 _device->getDevice(),
                 static_cast<uint32_t>(descriptorWrites.size()),
                 descriptorWrites.data(), 0, nullptr);
         }
 
-        VkDeviceSize indexBufferSize = sizeof(indices[0]) * indices.size();
-        _indexBuffer = std::make_unique<VulkanBuffer>(
-            _device->getDevice(), _gpu->getPhysicalDevice(), indexBufferSize,
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        _indexBuffer->copyTo((void *)indices.data(), indexBufferSize);
-        _indexCount = static_cast<uint32_t>(indices.size());
+        _uiContext = std::make_unique<UI::UIContext>(
+            _device->getDevice(), _gpu->getPhysicalDevice(),
+            _swapChain->getFormat(), _swapChain->getExtent());
+
+        uint32_t w = _swapChain->getExtent().width;
+        uint32_t h = _swapChain->getExtent().height;
+
+        _uiContext->addWidget(std::make_unique<UI::UIPanel>(
+            UI::LayoutManager::GetPanelRect(UI::PanelSide::Left, w, h),
+            glm::vec4(0.15f, 0.15f, 0.15f, 1.0f)));
+        _uiContext->addWidget(std::make_unique<UI::UIPanel>(
+            UI::LayoutManager::GetPanelRect(UI::PanelSide::Bottom, w, h),
+            glm::vec4(0.12f, 0.12f, 0.12f, 1.0f)));
+        _uiContext->addWidget(std::make_unique<UI::UIPanel>(
+            UI::LayoutManager::GetPanelRect(UI::PanelSide::Right, w, h),
+            glm::vec4(0.15f, 0.15f, 0.15f, 1.0f)));
+        _uiContext->addWidget(std::make_unique<UI::UIPanel>(
+            UI::LayoutManager::GetPanelRect(UI::PanelSide::Top, w, h),
+            glm::vec4(0.18f, 0.18f, 0.18f, 1.0f)));
     }
+
     VulkanContext::~VulkanContext() {
         vkDeviceWaitIdle(_device->getDevice());
         vkDestroyDescriptorPool(_device->getDevice(), _descriptorPool, nullptr);
@@ -174,17 +203,49 @@ namespace Engine::Renderer {
         UniformBufferObject ubo{};
         ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                                 glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 70.0f),
-                               glm::vec3(0.0f, 0.0f, 0.0f),
-                               glm::vec3(0.0f, 1.0f, 0.0f));
+        ubo.view = _camera->GetViewMatrix();
         float aspect = _swapChain->getExtent().width /
                        (float)_swapChain->getExtent().height;
-        ubo.proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 1000.0f);
+        ubo.proj = glm::perspective(glm::radians(_camera->zoom), aspect, 0.1f,
+                                    1000.0f);
         ubo.proj[1][1] *= -1;
         _uniformBuffers[currentImage]->copyTo(&ubo, sizeof(ubo));
     }
 
-    void VulkanContext::drawFrame() {
+    void VulkanContext::drawFrame(GLFWwindow *window) {
+        float currentFrameTime = static_cast<float>(glfwGetTime());
+        float deltaTime = currentFrameTime - _lastFrameTime;
+        _lastFrameTime = currentFrameTime;
+
+        _camera->zoom_input(Core::Input::scroll_offset);
+
+        Core::Input::scroll_offset = 0.0f;
+
+        if (Core::Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            double xpos = Core::Input::getMouseX();
+            double ypos = Core::Input::getMouseY();
+
+            if (_firstMouse) {
+                _lastMouseX = xpos;
+                _lastMouseY = ypos;
+                _firstMouse = false;
+            }
+
+            float xoffset = static_cast<float>(xpos - _lastMouseX);
+            float yoffset = static_cast<float>(_lastMouseY - ypos);
+
+            _lastMouseX = xpos;
+            _lastMouseY = ypos;
+
+            _camera->rotate(xoffset, yoffset);
+        } else {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            _firstMouse = true;
+        }
+
+        _camera->update(deltaTime);
+
         VkDevice device = _device->getDevice();
 
         vkWaitForFences(device, 1,
@@ -218,6 +279,10 @@ namespace Engine::Renderer {
             _commandBuffers->getCommandBuffers()[_currentFrame];
         vkResetCommandBuffer(commandBuffer, 0);
         updateUniformBuffer(_currentFrame);
+
+        _uiContext->update(0.0f);
+        _uiContext->updateBuffers(_gpu->getPhysicalDevice());
+
         recordCommandBuffer(commandBuffer, imageIndex);
 
         VkSubmitInfo submitInfo{};
@@ -340,6 +405,8 @@ namespace Engine::Renderer {
                                 &_descriptorSets[_currentFrame], 0, nullptr);
 
         vkCmdDrawIndexed(commandBuffer, _indexCount, 1, 0, 0, 0);
+
+        _uiContext->recordCommands(commandBuffer);
 
         vkCmdEndRendering(commandBuffer);
 

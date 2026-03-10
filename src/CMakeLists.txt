@@ -1,6 +1,7 @@
 set(ENGINE_SOURCES
   main.cpp
   core/window.cpp
+  core/input.cpp
   renderer/context.cpp
   renderer/instance.cpp
   renderer/logical_device.cpp
@@ -15,6 +16,9 @@ set(ENGINE_SOURCES
   renderer/buffer.cpp
   renderer/stb_image_impl.cpp
   renderer/texture.cpp
+  renderer/camera.cpp
+  ui/context.cpp
+  ui/layout_manager.cpp
   math/engine_math.cpp
 )
 

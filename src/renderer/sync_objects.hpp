@@ -15,13 +15,13 @@ namespace Engine::Renderer {
         VulkanSyncObjects(const VulkanSyncObjects &) = delete;
         VulkanSyncObjects &operator=(const VulkanSyncObjects &) = delete;
         ~VulkanSyncObjects();
-        const std::vector<VkSemaphore>& getImageAvailableSemaphores() const {
+        const std::vector<VkSemaphore> &getImageAvailableSemaphores() const {
             return _imageAvailableSemaphores;
         }
-        const std::vector<VkSemaphore>& getRenderFinishedSemaphores() const {
+        const std::vector<VkSemaphore> &getRenderFinishedSemaphores() const {
             return _renderFinishedSemaphores;
         }
-        const std::vector<VkFence>& getInFlightFence() const {
+        const std::vector<VkFence> &getInFlightFence() const {
             return _inFlightFences;
         }
     };

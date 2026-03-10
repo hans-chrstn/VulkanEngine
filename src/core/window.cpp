@@ -1,4 +1,5 @@
 #include "window.hpp"
+#include "core/input.hpp"
 #include "logger.hpp"
 #include <GLFW/glfw3.h>
 
@@ -15,6 +16,8 @@ namespace Engine::Core {
 
         m_Window = glfwCreateWindow(m_Width, m_Height, m_Title.c_str(), nullptr,
                                     nullptr);
+
+        glfwSetScrollCallback(m_Window, Core::Input::scrollCallback);
 
         if (m_Window == nullptr) {
             ENGINE_FATAL("Failed to create a window");
