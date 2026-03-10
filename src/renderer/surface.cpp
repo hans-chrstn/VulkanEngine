@@ -1,8 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include "surface.hpp"
 #include "core/logger.hpp"
-#include <GLFW/glfw3.h>
-#include <vulkan/vulkan_core.h>
 namespace Engine::Renderer {
     VulkanSurface::VulkanSurface(VkInstance instance, GLFWwindow *window)
         : _instance(instance) {

@@ -20,6 +20,9 @@ namespace Engine::UI {
         std::vector<UIVertex> _vertexBufferData;
         std::vector<uint32_t> _indexBufferData;
 
+        VkDescriptorPool _descriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSet _descriptorSet = VK_NULL_HANDLE;
+
         void createPipeline(VkFormat format, VkExtent2D extent);
 
       public:
@@ -27,6 +30,7 @@ namespace Engine::UI {
                   VkFormat swapChainFormat, VkExtent2D extent);
         ~UIContext();
 
+        void setFontTexture(VkImageView view, VkSampler sampler);
         void addWidget(std::unique_ptr<Widget> widget);
         void update(float deltaTime);
         void updateBuffers(VkPhysicalDevice physicalDevice);

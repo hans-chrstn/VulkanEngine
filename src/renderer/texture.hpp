@@ -1,7 +1,8 @@
 #pragma once
 
 #include <string>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
+
 namespace Engine::Renderer {
     class VulkanTexture {
       private:
@@ -11,10 +12,19 @@ namespace Engine::Renderer {
         VkImageView _view = VK_NULL_HANDLE;
         VkSampler _sampler = VK_NULL_HANDLE;
 
+        void createTexture(VkPhysicalDevice physicalDevice,
+                           VkCommandPool commandPool, VkQueue graphicsQueue,
+                           const void *pixels, uint32_t width, uint32_t height,
+                           VkFormat format, uint32_t bytesPerPixel);
+
       public:
         VulkanTexture(VkDevice device, VkPhysicalDevice physicalDevice,
                       VkCommandPool commandPool, VkQueue graphicsQueue,
                       const std::string &path);
+        VulkanTexture(VkDevice device, VkPhysicalDevice physicalDevice,
+                      VkCommandPool commandPool, VkQueue graphicsQueue,
+                      const void *pixels, uint32_t width, uint32_t height,
+                      VkFormat format = VK_FORMAT_R8_UNORM);
         ~VulkanTexture();
 
         VulkanTexture(const VulkanTexture &) = delete;

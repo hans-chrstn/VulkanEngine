@@ -2,8 +2,6 @@
 #include "logical_device.hpp"
 #include "physical_device.hpp"
 #include <GLFW/glfw3.h>
-#include <vector>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     class VulkanSwapChain {

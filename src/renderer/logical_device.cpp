@@ -1,9 +1,7 @@
 #include "logical_device.hpp"
 #include "core/logger.hpp"
 #include "physical_device.hpp"
-#include <cstdint>
 #include <set>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     VulkanLogicalDevice::VulkanLogicalDevice(

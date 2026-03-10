@@ -1,8 +1,6 @@
 #include "command_pool.hpp"
 #include "core/logger.hpp"
-#include <cstdint>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     VulkanCommandPool::VulkanCommandPool(VkDevice device,

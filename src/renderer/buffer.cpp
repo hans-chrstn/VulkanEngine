@@ -3,7 +3,6 @@
 #include "renderer/utils/utils.hpp"
 #include <cstddef>
 #include <cstring>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     VulkanBuffer::VulkanBuffer(VkDevice device, VkPhysicalDevice physicalDevice,

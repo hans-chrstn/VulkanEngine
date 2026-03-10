@@ -3,8 +3,6 @@
 #include "core/logger.hpp"
 #include "renderer/utils/utils.hpp"
 #include <stb/stb_image.h>
-#include <string>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     VkCommandBuffer beginSingleTimeCommands(VkDevice device,
@@ -47,35 +45,52 @@ namespace Engine::Renderer {
                                  VkCommandPool commandPool,
                                  VkQueue graphicsQueue, const std::string &path)
         : _device(device) {
-        int texWidth;
-        int texHeight;
-        int texChannels;
-
-        stbi_uc *pixels = stbi_load(path.c_str(), &texWidth, &texHeight,
-                                    &texChannels, STBI_rgb_alpha);
-
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
-
+        int w, h, ch;
+        stbi_uc *pixels = stbi_load(path.c_str(), &w, &h, &ch, STBI_rgb_alpha);
         if (!pixels) {
             ENGINE_FATAL("Failed to load texture image: " + path);
         }
 
-        VulkanBuffer stagingBuffer(device, physicalDevice, imageSize,
+        createTexture(physicalDevice, commandPool, graphicsQueue, pixels,
+                      static_cast<uint32_t>(w), static_cast<uint32_t>(h),
+                      VK_FORMAT_R8G8B8A8_SRGB, 4);
+        stbi_image_free(pixels);
+    }
+
+    VulkanTexture::VulkanTexture(VkDevice device,
+                                 VkPhysicalDevice physicalDevice,
+                                 VkCommandPool commandPool,
+                                 VkQueue graphicsQueue, const void *pixels,
+                                 uint32_t width, uint32_t height,
+                                 VkFormat format)
+        : _device(device) {
+        uint32_t bytesPerPixel = (format == VK_FORMAT_R8_UNORM) ? 1 : 4;
+        createTexture(physicalDevice, commandPool, graphicsQueue, pixels, width,
+                      height, format, bytesPerPixel);
+    }
+
+    void VulkanTexture::createTexture(VkPhysicalDevice physicalDevice,
+                                      VkCommandPool commandPool,
+                                      VkQueue graphicsQueue, const void *pixels,
+                                      uint32_t width, uint32_t height,
+                                      VkFormat format, uint32_t bytesPerPixel) {
+        VkDeviceSize imageSize = width * height * bytesPerPixel;
+
+        VulkanBuffer stagingBuffer(_device, physicalDevice, imageSize,
                                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        stagingBuffer.copyTo(pixels, imageSize);
-        stbi_image_free(pixels);
+        stagingBuffer.copyTo((void *)pixels, imageSize);
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent.width = static_cast<uint32_t>(texWidth);
-        imageInfo.extent.height = static_cast<uint32_t>(texHeight);
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
         imageInfo.extent.depth = 1;
         imageInfo.mipLevels = 1;
         imageInfo.arrayLayers = 1;
-        imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+        imageInfo.format = format;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.usage =
@@ -125,8 +140,7 @@ namespace Engine::Renderer {
         VkBufferImageCopy region{};
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         region.imageSubresource.layerCount = 1;
-        region.imageExtent = {static_cast<uint32_t>(texWidth),
-                              static_cast<uint32_t>(texHeight), 1};
+        region.imageExtent = {width, height, 1};
 
         vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.getBuffer(), _image,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
@@ -148,7 +162,7 @@ namespace Engine::Renderer {
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = _image;
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+        viewInfo.format = format;
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         viewInfo.subresourceRange.levelCount = 1;
         viewInfo.subresourceRange.layerCount = 1;

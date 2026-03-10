@@ -3,6 +3,7 @@
 #include "camera.hpp"
 #include "command_buffers.hpp"
 #include "command_pool.hpp"
+#include "font.hpp"
 #include "image_views.hpp"
 #include "instance.hpp"
 #include "logical_device.hpp"
@@ -13,11 +14,8 @@
 #include "sync_objects.hpp"
 #include "texture.hpp"
 #include "ui/context.hpp"
-#include <GLFW/glfw3.h>
-#include <cstdint>
 #include <memory>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     class VulkanContext {
@@ -48,6 +46,7 @@ namespace Engine::Renderer {
         std::unique_ptr<VulkanTexture> _texture;
         std::unique_ptr<UI::UIContext> _uiContext;
         std::unique_ptr<Camera> _camera;
+        std::unique_ptr<Font> _font;
 
         std::vector<std::unique_ptr<VulkanBuffer>> _uniformBuffers;
 

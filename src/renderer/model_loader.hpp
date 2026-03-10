@@ -4,8 +4,6 @@
 #include "core/logger.hpp"
 #include "vertex.hpp"
 #include <tiny_obj_loader.h>
-#include <unordered_map>
-#include <vector>
 
 namespace Engine::Renderer {
     inline void loadModel(const std::string &modelPath,

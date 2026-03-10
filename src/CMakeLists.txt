@@ -17,6 +17,7 @@ set(ENGINE_SOURCES
   renderer/stb_image_impl.cpp
   renderer/texture.cpp
   renderer/camera.cpp
+  renderer/font.cpp
   ui/context.cpp
   ui/layout_manager.cpp
   math/engine_math.cpp
@@ -24,4 +25,7 @@ set(ENGINE_SOURCES
 
 add_executable(VulkanTest ${ENGINE_SOURCES})
 target_include_directories(VulkanTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(VulkanTest PRIVATE Vulkan::Vulkan glfw)
+
+find_package(Freetype REQUIRED)
+target_include_directories(VulkanTest PRIVATE ${FREETYPE_INCLUDE_DIRS})
+target_link_libraries(VulkanTest PRIVATE Vulkan::Vulkan glfw ${FREETYPE_LIBRARIES})

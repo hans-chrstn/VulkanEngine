@@ -1,7 +1,5 @@
 #include "sync_objects.hpp"
 #include "core/logger.hpp"
-#include <cstdint>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     VulkanSyncObjects::VulkanSyncObjects(VkDevice device,

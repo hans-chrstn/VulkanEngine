@@ -1,12 +1,8 @@
 #include "swapchain.hpp"
 #include "core/logger.hpp"
 #include "physical_device.hpp"
-#include <GLFW/glfw3.h>
 #include <algorithm>
-#include <cstdint>
 #include <limits>
-#include <vector>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     VulkanSwapChain::VulkanSwapChain(const VulkanPhysicalDevice &physicalDevice,

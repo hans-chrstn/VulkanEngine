@@ -1,7 +1,7 @@
 #pragma once
-#include <cstdint>
 #include <vector>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
+
 namespace Engine::Renderer {
     class VulkanSyncObjects {
       private:

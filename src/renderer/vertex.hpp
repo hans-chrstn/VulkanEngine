@@ -1,10 +1,5 @@
 #pragma once
-#include <array>
-#include <cstddef>
-#include <glm/ext/vector_float2.hpp>
-#include <glm/ext/vector_float3.hpp>
-#include <glm/glm.hpp>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 

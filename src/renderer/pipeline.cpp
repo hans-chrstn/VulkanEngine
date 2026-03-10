@@ -14,6 +14,7 @@ namespace Engine::Renderer {
         VkVertexInputBindingDescription bindingDescription,
         const std::vector<VkVertexInputAttributeDescription>
             &attributeDescriptions,
+        const std::vector<VkDescriptorSetLayoutBinding> &bindings,
         VkPushConstantRange *pushConstantRange, VkCullModeFlags cullMode,
         VkFrontFace frontFace)
         : _device(device) {
@@ -97,7 +98,14 @@ namespace Engine::Renderer {
         colorBlendAttachment.colorWriteMask =
             VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_FALSE;
+        colorBlendAttachment.blendEnable = VK_TRUE;
+        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachment.dstColorBlendFactor =
+            VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
         VkPipelineColorBlendStateCreateInfo colorBlending{};
         colorBlending.sType =
@@ -105,24 +113,6 @@ namespace Engine::Renderer {
         colorBlending.logicOpEnable = VK_FALSE;
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
-
-        VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        uboLayoutBinding.pImmutableSamplers = nullptr;
-
-        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = 1;
-        samplerLayoutBinding.descriptorCount = 1;
-        samplerLayoutBinding.descriptorType =
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.pImmutableSamplers = nullptr;
-        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = {
-            uboLayoutBinding, samplerLayoutBinding};
 
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -158,7 +148,6 @@ namespace Engine::Renderer {
 
         std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,
                                                      VK_DYNAMIC_STATE_SCISSOR};
-
         VkPipelineDynamicStateCreateInfo dynamicState{};
         dynamicState.sType =
             VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -194,6 +183,7 @@ namespace Engine::Renderer {
     VulkanGraphicsPipeline::~VulkanGraphicsPipeline() {
         vkDestroyPipeline(_device, _graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(_device, _pipelineLayout, nullptr);
+        vkDestroyDescriptorSetLayout(_device, _descriptorSetLayout, nullptr);
     }
 
     VkShaderModule
@@ -202,13 +192,11 @@ namespace Engine::Renderer {
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
         createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
-
         VkShaderModule shaderModule;
         if (vkCreateShaderModule(_device, &createInfo, nullptr,
                                  &shaderModule) != VK_SUCCESS) {
             ENGINE_FATAL("Failed to create shader module");
         }
-
         return shaderModule;
     }
 } // namespace Engine::Renderer

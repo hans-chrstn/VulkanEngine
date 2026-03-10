@@ -1,10 +1,5 @@
 #include "camera.hpp"
 #include "core/input.hpp"
-#include <cmath>
-#include <glm/ext/quaternion_geometric.hpp>
-#include <glm/ext/vector_float3.hpp>
-#include <glm/geometric.hpp>
-#include <glm/trigonometric.hpp>
 
 namespace Engine::Renderer {
     void Camera::update(float deltaTime) {

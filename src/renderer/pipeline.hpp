@@ -2,7 +2,6 @@
 #include <string>
 #include <vector>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     class VulkanGraphicsPipeline {
@@ -20,13 +19,16 @@ namespace Engine::Renderer {
             VkVertexInputBindingDescription bindingDescription,
             const std::vector<VkVertexInputAttributeDescription>
                 &attributeDescriptions,
+            const std::vector<VkDescriptorSetLayoutBinding> &bindings,
             VkPushConstantRange *pushConstantRange = nullptr,
             VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT,
             VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE);
+
         VulkanGraphicsPipeline(const VulkanGraphicsPipeline &) = delete;
         VulkanGraphicsPipeline &
         operator=(const VulkanGraphicsPipeline &) = delete;
         ~VulkanGraphicsPipeline();
+
         VkPipeline getPipeline() const {
             return _graphicsPipeline;
         }

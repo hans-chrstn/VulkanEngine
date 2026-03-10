@@ -1,11 +1,7 @@
 #include "physical_device.hpp"
 #include "core/logger.hpp"
 #include "utils/utils.hpp"
-#include <cstdint>
 #include <set>
-#include <string>
-#include <vector>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance instance,

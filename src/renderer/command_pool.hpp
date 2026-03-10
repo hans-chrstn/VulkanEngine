@@ -1,6 +1,6 @@
 #pragma once
-#include <cstdint>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.h>
+
 namespace Engine::Renderer {
     class VulkanCommandPool {
       private:

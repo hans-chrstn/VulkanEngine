@@ -29,15 +29,18 @@ namespace Engine::UI {
             glm::vec4 color = _isHovered ? _hoverColor : _baseColor;
             uint32_t offset = static_cast<uint32_t>(outVertices.size());
 
-            outVertices.push_back({{_bounds.x, _bounds.y}, color, {0, 0}});
             outVertices.push_back(
-                {{_bounds.x + _bounds.width, _bounds.y}, color, {1, 0}});
+                {{_bounds.x, _bounds.y}, color, {-1.0f, -1.0f}});
+            outVertices.push_back({{_bounds.x + _bounds.width, _bounds.y},
+                                   color,
+                                   {-1.0f, -1.0f}});
             outVertices.push_back(
                 {{_bounds.x + _bounds.width, _bounds.y + _bounds.height},
                  color,
-                 {1, 1}});
-            outVertices.push_back(
-                {{_bounds.x, _bounds.y + _bounds.height}, color, {0, 1}});
+                 {-1.0f, -1.0f}});
+            outVertices.push_back({{_bounds.x, _bounds.y + _bounds.height},
+                                   color,
+                                   {-1.0f, -1.0f}});
 
             outIndices.push_back(offset + 0);
             outIndices.push_back(offset + 1);

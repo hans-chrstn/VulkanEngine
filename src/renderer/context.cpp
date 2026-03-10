@@ -6,19 +6,10 @@
 #include "ui/context.hpp"
 #include "ui/layout_manager.hpp"
 #include "ui/panel.hpp"
+#include "ui/text.hpp"
 #include "vertex.hpp"
-#include <GLFW/glfw3.h>
-#include <array>
 #include <chrono>
-#include <cstdint>
-#include <glm/ext/matrix_clip_space.hpp>
-#include <glm/ext/matrix_transform.hpp>
-#include <glm/fwd.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/trigonometric.hpp>
 #include <memory>
-#include <vector>
-#include <vulkan/vulkan_core.h>
 
 namespace Engine::Renderer {
     VulkanContext::VulkanContext(GLFWwindow *window) {
@@ -37,13 +28,32 @@ namespace Engine::Renderer {
 
         _camera = std::make_unique<Camera>();
 
+        VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        uboLayoutBinding.binding = 0;
+        uboLayoutBinding.descriptorCount = 1;
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboLayoutBinding.pImmutableSamplers = nullptr;
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+        samplerLayoutBinding.binding = 1;
+        samplerLayoutBinding.descriptorCount = 1;
+        samplerLayoutBinding.descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerLayoutBinding.pImmutableSamplers = nullptr;
+        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        std::vector<VkDescriptorSetLayoutBinding> bindings = {
+            uboLayoutBinding, samplerLayoutBinding};
+
         auto attr = Vertex::getAttributeDescriptions();
         std::vector<VkVertexInputAttributeDescription> attributeVector(
             attr.begin(), attr.end());
+
         _pipeline = std::make_unique<VulkanGraphicsPipeline>(
             _device->getDevice(), _swapChain->getExtent(),
             _swapChain->getFormat(), "shaders/vert.spv", "shaders/frag.spv",
-            Vertex::getBindingDescription(), attributeVector, nullptr,
+            Vertex::getBindingDescription(), attributeVector, bindings, nullptr,
             VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 
         _commandPool = std::make_unique<VulkanCommandPool>(
@@ -59,6 +69,11 @@ namespace Engine::Renderer {
             _device->getDevice(), _gpu->getPhysicalDevice(),
             _commandPool->getPool(), _device->getGraphicsQueue(),
             "textures/texture.png");
+
+        _font = std::make_unique<Font>(
+            _device->getDevice(), _gpu->getPhysicalDevice(),
+            _commandPool->getPool(), _device->getGraphicsQueue(),
+            "assets/fonts/JetBrains-Mono/ttf/JetBrainsMono-Regular.ttf");
 
         _imagesInFlight.resize(_swapChain->getImages().size(), VK_NULL_HANDLE);
 
@@ -170,22 +185,32 @@ namespace Engine::Renderer {
         _uiContext = std::make_unique<UI::UIContext>(
             _device->getDevice(), _gpu->getPhysicalDevice(),
             _swapChain->getFormat(), _swapChain->getExtent());
+        _uiContext->setFontTexture(_font->getAtlas().getView(),
+                                   _font->getAtlas().getSampler());
 
         uint32_t w = _swapChain->getExtent().width;
         uint32_t h = _swapChain->getExtent().height;
 
+        auto hRect = UI::LayoutManager::GetPanelRect(UI::PanelSide::Left, w, h);
+        auto pRect =
+            UI::LayoutManager::GetPanelRect(UI::PanelSide::Bottom, w, h);
+        auto iRect =
+            UI::LayoutManager::GetPanelRect(UI::PanelSide::Right, w, h);
+        auto tRect = UI::LayoutManager::GetPanelRect(UI::PanelSide::Top, w, h);
+
         _uiContext->addWidget(std::make_unique<UI::UIPanel>(
-            UI::LayoutManager::GetPanelRect(UI::PanelSide::Left, w, h),
-            glm::vec4(0.15f, 0.15f, 0.15f, 1.0f)));
+            hRect, glm::vec4(0.15f, 0.15f, 0.15f, 0.5f)));
         _uiContext->addWidget(std::make_unique<UI::UIPanel>(
-            UI::LayoutManager::GetPanelRect(UI::PanelSide::Bottom, w, h),
-            glm::vec4(0.12f, 0.12f, 0.12f, 1.0f)));
+            pRect, glm::vec4(0.12f, 0.12f, 0.12f, 0.5f)));
         _uiContext->addWidget(std::make_unique<UI::UIPanel>(
-            UI::LayoutManager::GetPanelRect(UI::PanelSide::Right, w, h),
-            glm::vec4(0.15f, 0.15f, 0.15f, 1.0f)));
+            iRect, glm::vec4(0.15f, 0.15f, 0.15f, 0.5f)));
         _uiContext->addWidget(std::make_unique<UI::UIPanel>(
-            UI::LayoutManager::GetPanelRect(UI::PanelSide::Top, w, h),
-            glm::vec4(0.18f, 0.18f, 0.18f, 1.0f)));
+            tRect, glm::vec4(0.18f, 0.18f, 0.18f, 0.5f)));
+
+        UI::Rect labelRect = {hRect.x + 5.0f, hRect.y + 5.0f, 100.0f, 20.0f};
+        _uiContext->addWidget(std::make_unique<UI::UIText>(
+            "Hierarchy", labelRect, glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), 0.3f,
+            *_font));
     }
 
     VulkanContext::~VulkanContext() {
@@ -218,26 +243,21 @@ namespace Engine::Renderer {
         _lastFrameTime = currentFrameTime;
 
         _camera->zoom_input(Core::Input::scroll_offset);
-
         Core::Input::scroll_offset = 0.0f;
 
         if (Core::Input::isMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             double xpos = Core::Input::getMouseX();
             double ypos = Core::Input::getMouseY();
-
             if (_firstMouse) {
                 _lastMouseX = xpos;
                 _lastMouseY = ypos;
                 _firstMouse = false;
             }
-
             float xoffset = static_cast<float>(xpos - _lastMouseX);
             float yoffset = static_cast<float>(_lastMouseY - ypos);
-
             _lastMouseX = xpos;
             _lastMouseY = ypos;
-
             _camera->rotate(xoffset, yoffset);
         } else {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -247,7 +267,6 @@ namespace Engine::Renderer {
         _camera->update(deltaTime);
 
         VkDevice device = _device->getDevice();
-
         vkWaitForFences(device, 1,
                         &_syncObjects->getInFlightFence()[_currentFrame],
                         VK_TRUE, UINT64_MAX);
@@ -271,7 +290,6 @@ namespace Engine::Renderer {
 
         vkResetFences(device, 1,
                       &_syncObjects->getInFlightFence()[_currentFrame]);
-
         _imagesInFlight[imageIndex] =
             _syncObjects->getInFlightFence()[_currentFrame];
 
@@ -280,19 +298,17 @@ namespace Engine::Renderer {
         vkResetCommandBuffer(commandBuffer, 0);
         updateUniformBuffer(_currentFrame);
 
-        _uiContext->update(0.0f);
+        _uiContext->update(deltaTime);
         _uiContext->updateBuffers(_gpu->getPhysicalDevice());
 
         recordCommandBuffer(commandBuffer, imageIndex);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
         VkSemaphore waitSemaphores[] = {
             _syncObjects->getImageAvailableSemaphores()[_currentFrame]};
         VkPipelineStageFlags waitStages[] = {
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-
         VkSemaphore signalSemaphores[] = {
             _syncObjects->getRenderFinishedSemaphores()[imageIndex]};
 
@@ -314,14 +330,12 @@ namespace Engine::Renderer {
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
-
         VkSwapchainKHR swapChains[] = {_swapChain->getSwapChain()};
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
 
         result = vkQueuePresentKHR(_device->getPresentQueue(), &presentInfo);
-
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         } else if (result != VK_SUCCESS) {
             ENGINE_FATAL("Failed to present swap chain image!");
@@ -395,15 +409,12 @@ namespace Engine::Renderer {
 
         VkBuffer vertexBuffers[] = {_vertexBuffer->getBuffer()};
         VkDeviceSize offsets[] = {0};
-
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, _indexBuffer->getBuffer(), 0,
                              VK_INDEX_TYPE_UINT32);
-
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 _pipeline->getPipelineLayout(), 0, 1,
                                 &_descriptorSets[_currentFrame], 0, nullptr);
-
         vkCmdDrawIndexed(commandBuffer, _indexCount, 1, 0, 0, 0);
 
         _uiContext->recordCommands(commandBuffer);
@@ -414,7 +425,6 @@ namespace Engine::Renderer {
         barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         barrier.dstAccessMask = 0;
-
         vkCmdPipelineBarrier(commandBuffer,
                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                              VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0,
